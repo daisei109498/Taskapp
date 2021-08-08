@@ -7,37 +7,68 @@
 
 import UIKit
 import RealmSwift    // 追加する
+import DropDown //ドロップダウンリスト追加
 
-class inputViewController: UIViewController {
+class inputViewController: UIViewController,UITextFieldDelegate{
 
+    @IBOutlet weak var categoryTextField: UITextField!
     @IBOutlet weak var titleTextField: UITextField!
     @IBOutlet weak var contentsTextView: UITextView!
     @IBOutlet weak var datePicker: UIDatePicker!
  
     var task: Task!
-    let realm = try! Realm()    // 追加する    var task: Task!   // 追加する
+    let realm = try! Realm()    // 追加する
+        
+    let dropDown = DropDown()
+    var categoryArray = try! Realm().objects(Category.self) // ←追加
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
         // 背景をタップしたらdismissKeyboardメソッドを呼ぶように設定する
         let tapGesture: UITapGestureRecognizer = UITapGestureRecognizer(target:self, action:#selector(dismissKeyboard))
         self.view.addGestureRecognizer(tapGesture)
+        
+        categoryTextField.delegate = self
 
+        categoryTextField.text = ""
         titleTextField.text = task.title
         contentsTextView.text = task.contents
         datePicker.date = task.date
+ 
+        let category = Category()
+        if categoryArray.count == 0 {
+            try! realm.write {
+            category.name = "Business"
+            self.realm.add(category, update: .modified)
+            category.name = "Private"
+            self.realm.add(category, update: .modified)
+            category.name = "Other"
+            self.realm.add(category, update: .modified)
+            }
+        }
         
+        categoryArray = try! Realm().objects(Category.self) // ←追加
+        //let view = UIView()
+        dropDown.anchorView = categoryTextField
+        dropDown.dataSource = Array(categoryArray).map { $0.name }
+        print( Array(categoryArray))
+        dropDown.direction = .bottom
+        dropDown.selectionAction = { [unowned self] (index: Int, item: String) in
+            categoryTextField.text = item
+        }
     }
     
     // 追加する
     override func viewWillDisappear(_ animated: Bool) {
         try! realm.write {
+            self.task.category?.name = ""
             self.task.title = self.titleTextField.text!
             self.task.contents = self.contentsTextView.text
             self.task.date = self.datePicker.date
             self.realm.add(self.task, update: .modified)
         }
-        setNotification(task: task)   // 追加
+        setNotification(task: task)   // 追加 ローカル通知
         super.viewWillDisappear(animated)
     }
     // タスクのローカル通知を登録する --- ここから ---
@@ -80,6 +111,9 @@ class inputViewController: UIViewController {
         }
     } // --- ここまで追加 ---
     
+    @IBAction func tapCategory(_ sender: UITextField) {
+        dropDown.show()
+    }
     
     @objc func dismissKeyboard(){
         // キーボードを閉じる

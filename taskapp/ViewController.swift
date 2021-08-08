@@ -1,24 +1,51 @@
 import UIKit
 import RealmSwift
+import DropDown
 import UserNotifications    // 追加
 
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource,UITextFieldDelegate{
     @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var searchCategory: UITextField!
+    
     
     // Realmインスタンスを取得する
     let realm = try! Realm()  // ←追加
+    
+    let dropDown = DropDown()
+    var categoryArray = try! Realm().objects(Category.self) // ←追加
     
     // DB内のタスクが格納されるリスト。
     // 日付の近い順でソート：昇順
     // 以降内容をアップデートするとリスト内は自動的に更新される。
     var taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: true)  // ←追加
 
-
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         tableView.delegate = self
         tableView.dataSource = self
+        
+        searchCategory.delegate = self
+        
+        categoryArray = try! Realm().objects(Category.self) // ←追加
+        dropDown.anchorView = searchCategory
+        dropDown.dataSource = Array(categoryArray).map { $0.name }
+        dropDown.direction = .bottom
+        dropDown.selectionAction = { [unowned self] (index: Int, item: String) in
+            
+            searchCategory.text = item
+            let realm = try! Realm()
+            
+            if searchCategory.text == ""{
+               taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: true)  // ←追加
+            } else {
+               taskArray = realm
+                   .objects(Task.self)
+                   .filter("category == %@", item)
+            }
+
+            tableView.reloadData()
+        }
     }
 
     // データの数（＝セルの数）を返すメソッド
@@ -105,6 +132,15 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         tableView.reloadData()
+    }
+    
+    @IBAction func searchCategorySelect(_ sender: UITextField) {
+        dropDown.show()
+    }
+    
+    @objc func dismissKeyboard(){
+        // キーボードを閉じる
+        view.endEditing(true)
     }
     
 }
