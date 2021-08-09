@@ -12,3 +12,4 @@ class Category: Object {
         return "id"
     }
 }
+

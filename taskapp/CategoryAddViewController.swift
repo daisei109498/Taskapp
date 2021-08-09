@@ -39,34 +39,44 @@ class CategoryAddViewController: UIViewController {
             // アラートダイアログを表示
             present(alertController, animated: true, completion: nil)
         }else{
-            let category = Category()
-            print(categoryArray.count)
-            if categoryArray.count == 0 {
+            var category = Category()
+              category.name = categoryTextField.text!
+              categoryArray = try! Realm().objects(Category.self)
+               .filter("name == %@", category.name)
+             if categoryArray.count == 0{
+                    category = Category()
+                    categoryArray = try! Realm().objects(Category.self)
                 try! realm.write {
-                category.name = categoryTextField.text!
-                self.realm.add(category, update: .modified)
-                }
-                categoryArray = try! Realm().objects(Category.self) // ←追加
-            }else{
-                try! realm.write {
-                category.id = categoryArray.max(ofProperty: "id")! + 1
-                category.name = categoryTextField.text!
-                self.realm.add(category, update: .modified)
-                }
-                categoryArray = try! Realm().objects(Category.self) // ←追加
-            }
-            // アラートダイアログを生成
-            let alertController = UIAlertController(title: "登録完了",
-                                                    message: "カテゴリ名\(categoryTextField.text!)を追加しました。",
-                                                    preferredStyle: UIAlertController.Style.alert)
-            // CANCELボタンがタップされた時の処理なし
-            let cancelButton = UIAlertAction(title: "とじる",
-                                             style: UIAlertAction.Style.cancel, handler: nil)
-            // CANCELボタンを追加
-            alertController.addAction(cancelButton)
-            // アラートダイアログを表示
-            present(alertController, animated: true, completion: nil)
-            
+                    category.id = categoryArray.max(ofProperty: "id")! + 1
+                    category.name = categoryTextField.text!
+                    self.realm.add(category, update: .modified)
+                    }
+                    categoryArray = try! Realm().objects(Category.self) // ←追加
+                // アラートダイアログを生成
+                let alertController = UIAlertController(title: "登録完了",
+                                                        message: "カテゴリ名\(categoryTextField.text!)を追加しました。",
+                                                        preferredStyle: UIAlertController.Style.alert)
+                // CANCELボタンがタップされた時の処理なし
+                let cancelButton = UIAlertAction(title: "とじる",
+                                                 style: UIAlertAction.Style.cancel, handler: nil)
+                // CANCELボタンを追加
+                alertController.addAction(cancelButton)
+                // アラートダイアログを表示
+                present(alertController, animated: true, completion: nil)
+             }else{
+                // アラートダイアログを生成
+                let alertController = UIAlertController(title: "エラー",
+                                                        message: "既に登録済みのカテゴリ名です。",
+                                                        preferredStyle: UIAlertController.Style.alert)
+                // CANCELボタンがタップされた時の処理なし
+                let cancelButton = UIAlertAction(title: "とじる",
+                                                 style: UIAlertAction.Style.cancel, handler: nil)
+                // CANCELボタンを追加
+                alertController.addAction(cancelButton)
+                // アラートダイアログを表示
+                present(alertController, animated: true, completion: nil)
+                    
+             }
         }
         //reset
         categoryTextField.text = ""
@@ -76,14 +86,5 @@ class CategoryAddViewController: UIViewController {
         // キーボードを閉じる
         view.endEditing(true)
     }
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
-    }
-    */
 
 }
