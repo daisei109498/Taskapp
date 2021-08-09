@@ -9,9 +9,9 @@ import UIKit
 import RealmSwift    // 追加する
 import DropDown //ドロップダウンリスト追加
 
-class inputViewController: UIViewController,UITextFieldDelegate{
+class inputViewController: UIViewController,UIGestureRecognizerDelegate{
 
-    @IBOutlet weak var categoryTextField: UITextField!
+    @IBOutlet weak var categoryLabel: UILabel!
     @IBOutlet weak var titleTextField: UITextField!
     @IBOutlet weak var contentsTextView: UITextView!
     @IBOutlet weak var datePicker: UIDatePicker!
@@ -20,49 +20,59 @@ class inputViewController: UIViewController,UITextFieldDelegate{
     let realm = try! Realm()    // 追加する
         
     let dropDown = DropDown()
+    var category = Category()
     var categoryArray = try! Realm().objects(Category.self) // ←追加
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // 背景をタップしたらdismissKeyboardメソッドを呼ぶように設定する
-        let tapGesture: UITapGestureRecognizer = UITapGestureRecognizer(target:self, action:#selector(dismissKeyboard))
-        self.view.addGestureRecognizer(tapGesture)
         
-        categoryTextField.delegate = self
-
-        categoryTextField.text = ""
+        categoryLabel.text = task.category?.name
         titleTextField.text = task.title
         contentsTextView.text = task.contents
         datePicker.date = task.date
- 
-        let category = Category()
-        if categoryArray.count == 0 {
-            try! realm.write {
-            category.name = "Business"
-            self.realm.add(category, update: .modified)
-            category.name = "Private"
-            self.realm.add(category, update: .modified)
-            category.name = "Other"
-            self.realm.add(category, update: .modified)
-            }
-        }
         
+        let tapAction:UITapGestureRecognizer = UITapGestureRecognizer(
+        target: self,
+        action: #selector(tapped(_:)))
+        categoryLabel?.isUserInteractionEnabled = true
+        categoryLabel?.addGestureRecognizer(tapAction)
+        
+        // 背景をタップしたらdismissKeyboardメソッドを呼ぶように設定する
+        let tapGesture: UITapGestureRecognizer = UITapGestureRecognizer(target:self, action:#selector(dismissKeyboard))
+        self.view.addGestureRecognizer(tapGesture)
+    }
+    
+    @objc func tapped(_ sender: UITapGestureRecognizer){
+        if sender.state == .ended {
+            dropDown.show()
+        }
+    }
+    // 追加する
+    override func viewWillAppear(_ animated: Bool) {
         categoryArray = try! Realm().objects(Category.self) // ←追加
         //let view = UIView()
-        dropDown.anchorView = categoryTextField
+        dropDown.anchorView = categoryLabel
         dropDown.dataSource = Array(categoryArray).map { $0.name }
-        print( Array(categoryArray))
         dropDown.direction = .bottom
         dropDown.selectionAction = { [unowned self] (index: Int, item: String) in
-            categoryTextField.text = item
+        categoryLabel.text = item
         }
+        super.viewWillAppear(animated)
     }
     
     // 追加する
     override func viewWillDisappear(_ animated: Bool) {
         try! realm.write {
-            self.task.category?.name = ""
+            if categoryLabel.text == nil{
+                category.name = ""
+            } else {
+                category.name = categoryLabel.text!
+            }
+            if category.name != "" {
+                categoryArray = try! Realm().objects(Category.self)
+               .filter("name == %@", category.name)
+                self.task.category = categoryArray[0]
+            }
             self.task.title = self.titleTextField.text!
             self.task.contents = self.contentsTextView.text
             self.task.date = self.datePicker.date
@@ -110,10 +120,6 @@ class inputViewController: UIViewController,UITextFieldDelegate{
             }
         }
     } // --- ここまで追加 ---
-    
-    @IBAction func tapCategory(_ sender: UITextField) {
-        dropDown.show()
-    }
     
     @objc func dismissKeyboard(){
         // キーボードを閉じる

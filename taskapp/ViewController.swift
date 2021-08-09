@@ -3,14 +3,13 @@ import RealmSwift
 import DropDown
 import UserNotifications    // 追加
 
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource,UITextFieldDelegate{
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource,UIGestureRecognizerDelegate{
     @IBOutlet weak var tableView: UITableView!
-    @IBOutlet weak var searchCategory: UITextField!
-    
+    @IBOutlet weak var searchCategory: UILabel!
+    @IBOutlet weak var resetButton: UIButton!
     
     // Realmインスタンスを取得する
-    let realm = try! Realm()  // ←追加
-    
+    var realm = try! Realm()  // ←追加
     let dropDown = DropDown()
     var categoryArray = try! Realm().objects(Category.self) // ←追加
     
@@ -24,30 +23,44 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         // Do any additional setup after loading the view.
         tableView.delegate = self
         tableView.dataSource = self
+       // searchCategory.delegate = self
         
-        searchCategory.delegate = self
-        
-        categoryArray = try! Realm().objects(Category.self) // ←追加
-        dropDown.anchorView = searchCategory
-        dropDown.dataSource = Array(categoryArray).map { $0.name }
-        dropDown.direction = .bottom
-        dropDown.selectionAction = { [unowned self] (index: Int, item: String) in
-            
-            searchCategory.text = item
-            let realm = try! Realm()
-            
-            if searchCategory.text == ""{
-               taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: true)  // ←追加
-            } else {
-               taskArray = realm
-                   .objects(Task.self)
-                   .filter("category == %@", item)
+        if categoryArray.count == 0 {
+            var category = Category()
+            try! realm.write {
+            category.name = "Business"
+            self.realm.add(category, update: .modified)
             }
-
-            tableView.reloadData()
+            categoryArray = try! Realm().objects(Category.self) // ←追加
+            category = Category()
+            try! realm.write {
+            category.id = categoryArray.max(ofProperty: "id")! + 1
+            category.name = "Private"
+            self.realm.add(category, update: .modified)
+            }
+            categoryArray = try! Realm().objects(Category.self) // ←追加
+            category = Category()
+            try! realm.write {
+            category.id = categoryArray.max(ofProperty: "id")! + 1
+            category.name = "Other"
+            self.realm.add(category, update: .modified)
+            }
+            categoryArray = try! Realm().objects(Category.self) // ←追加
+        }
+        
+        searchCategory?.text = ""
+        let tapAction:UITapGestureRecognizer = UITapGestureRecognizer(
+        target: self,
+        action: #selector(ViewController.tapped(_:)))
+        searchCategory?.isUserInteractionEnabled = true
+        searchCategory?.addGestureRecognizer(tapAction)
+        }
+    
+    @objc func tapped(_ sender: UITapGestureRecognizer){
+        if sender.state == .ended {
+            dropDown.show()
         }
     }
-
     // データの数（＝セルの数）を返すメソッド
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return taskArray.count  // ←修正する
@@ -60,6 +73,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 
         // Cellに値を設定する.  --- ここから ---
         let task = taskArray[indexPath.row]
+        print(task)
         cell.textLabel?.text = task.title
 
         let formatter = DateFormatter()
@@ -131,13 +145,37 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     // 入力画面から戻ってきた時に TableView を更新させる
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        categoryArray = try! Realm().objects(Category.self) // ←追加
+        dropDown.anchorView = searchCategory
+        dropDown.dataSource = Array(categoryArray).map { $0.name }
+        dropDown.direction = .bottom
+        dropDown.selectionAction = { [unowned self] (index: Int, item: String) in
+            
+            searchCategory.text = item
+            print(searchCategory.text!)
+            
+            if searchCategory.text == ""{
+               taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: true)  // ←追加
+            } else {
+               categoryArray = try! Realm().objects(Category.self)
+               .filter("name == %@", item)
+                taskArray = realm
+               .objects(Task.self)
+               .filter("category == %@", categoryArray[0])
+            }
+            tableView.reloadData()
+            
+        }
         tableView.reloadData()
+        
     }
-    
-    @IBAction func searchCategorySelect(_ sender: UITextField) {
-        dropDown.show()
+       
+    @IBAction func resetButtonPush(_ sender: Any) {
+        searchCategory?.text = ""
+        taskArray = try! Realm().objects(Task.self).sorted(byKeyPath: "date", ascending: true)  // ←追加
+        tableView.reloadData()
+        
     }
-    
     @objc func dismissKeyboard(){
         // キーボードを閉じる
         view.endEditing(true)

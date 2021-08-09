@@ -13,7 +13,7 @@ class CategoryAddViewController: UIViewController {
     @IBOutlet weak var categoryTextField: UITextField!
     @IBOutlet weak var categoryAddButton: UIButton!
     
-    let realm = try! Realm()    // 追加する
+    var realm = try! Realm()    // 追加する
     var categoryArray = try! Realm().objects(Category.self) // ←追加
     
     override func viewDidLoad() {
@@ -40,12 +40,21 @@ class CategoryAddViewController: UIViewController {
             present(alertController, animated: true, completion: nil)
         }else{
             let category = Category()
+            print(categoryArray.count)
+            if categoryArray.count == 0 {
                 try! realm.write {
                 category.name = categoryTextField.text!
                 self.realm.add(category, update: .modified)
                 }
-            categoryArray = try! Realm().objects(Category.self) // ←追加
-                    
+                categoryArray = try! Realm().objects(Category.self) // ←追加
+            }else{
+                try! realm.write {
+                category.id = categoryArray.max(ofProperty: "id")! + 1
+                category.name = categoryTextField.text!
+                self.realm.add(category, update: .modified)
+                }
+                categoryArray = try! Realm().objects(Category.self) // ←追加
+            }
             // アラートダイアログを生成
             let alertController = UIAlertController(title: "登録完了",
                                                     message: "カテゴリ名\(categoryTextField.text!)を追加しました。",
